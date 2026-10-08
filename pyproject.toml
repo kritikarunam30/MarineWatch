@@ -1,0 +1,61 @@
+[project]
+name = "offshore-monitor"
+version = "0.1.0"
+description = "Offshore oil and gas emissions monitor: slicks, platforms, vessels, flaring, NO2 lanes and drift."
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0",
+    "geoalchemy2>=0.15",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "shapely>=2.0",
+    "apscheduler>=3.10,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8.2",
+    "httpx>=0.27",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pipeline*", "api*", "ml*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["frontend", "data", "*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["pipeline", "api"]
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["geoalchemy2.*", "shapely.*", "apscheduler.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pipeline.db.migrations.*"]
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["db: needs a running PostGIS database (DATABASE_URL)"]

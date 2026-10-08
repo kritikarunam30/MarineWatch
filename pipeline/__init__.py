@@ -1,0 +1,1 @@
+"""Offshore monitor processing pipeline."""
