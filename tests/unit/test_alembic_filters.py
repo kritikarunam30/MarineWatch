@@ -18,6 +18,16 @@ def test_filters_extension_schema_indexes() -> None:
     assert not include_object(index, "idx_addr", "index", reflected=True, compare_to=None)
 
 
+def test_filters_postgis_tiger_table_in_public_schema() -> None:
+    table = SimpleNamespace(schema="public", name="state")
+    assert not include_object(table, "state", "table", reflected=True, compare_to=None)
+
+
+def test_filters_index_on_postgis_tiger_table() -> None:
+    index = SimpleNamespace(table=SimpleNamespace(schema="public", name="state"))
+    assert not include_object(index, "idx_state", "index", reflected=True, compare_to=None)
+
+
 def test_keeps_public_schema_table() -> None:
-    table = SimpleNamespace(schema="public")
+    table = SimpleNamespace(schema="public", name="basins")
     assert include_object(table, "basins", "table", reflected=True, compare_to=None)
