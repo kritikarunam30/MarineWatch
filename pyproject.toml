@@ -5,7 +5,7 @@ description = "Offshore oil and gas emissions monitor: slicks, platforms, vessel
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "fastapi>=0.115",
-    "uvicorn[standard]>=0.30",
+    "uvicorn>=0.30",
     "sqlalchemy>=2.0",
     "geoalchemy2>=0.15",
     "alembic>=1.13",
@@ -29,7 +29,7 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["pipeline*", "api*", "ml*"]
+include = ["pipeline*", "api*"]
 
 [tool.ruff]
 line-length = 100

@@ -34,12 +34,12 @@ def test_feature_collection_is_valid_geojson_shape() -> None:
 
 def test_rejects_bad_geometry_type_and_class() -> None:
     with pytest.raises(ValidationError):
-        schemas.Geometry(type="Circle", coordinates=[0, 0])  # type: ignore[arg-type]
+        schemas.Geometry(type="Circle", coordinates=[0, 0])
     with pytest.raises(ValidationError):
         schemas.ObjectDetection(
             id=1,
             scene_id="S1",
-            cls="buoy",  # type: ignore[arg-type]
+            cls="buoy",
             score=0.5,
             geom=schemas.Geometry(type="Point", coordinates=[0, 0]),
         )

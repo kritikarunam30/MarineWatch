@@ -1,34 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from api.routers import (
-    alerts,
-    basins,
-    drift,
-    events,
-    flares,
-    impacts,
-    no2,
-    objects,
-    platforms,
-    reports,
-    scenes,
-    slicks,
-    suspects,
-    tiles,
-    watchlists,
-)
 from pipeline.config import get_settings
 from pipeline.db.session import get_engine
 from pipeline.schemas import Health
 
 VERSION = "0.1.0"
-ROUTERS = [
-    basins, platforms, scenes, slicks, objects, flares, no2, events,
-    drift, suspects, impacts, alerts, watchlists, reports, tiles,
-]  # fmt: skip
+
+# Resources not built yet, with the phase that adds them. Each phase replaces its entry
+# with a real router in `api/routers/<resource>.py`.
+PLANNED_ROUTES = {
+    "basins": 2, "platforms": 2, "scenes": 3, "tiles": 3, "slicks": 4, "objects": 5,
+    "flares": 6, "no2": 6, "events": 6, "drift": 7, "suspects": 7, "impacts": 7,
+    "alerts": 8, "watchlists": 8, "reports": 9,
+}  # fmt: skip
 
 
 def database_ok() -> bool:
@@ -38,6 +25,15 @@ def database_ok() -> bool:
     except SQLAlchemyError:
         return False
     return True
+
+
+def add_planned_route(app: FastAPI, resource: str, phase: int) -> None:
+    def not_implemented() -> None:
+        raise HTTPException(
+            status.HTTP_501_NOT_IMPLEMENTED, f"/{resource} is implemented in phase {phase}"
+        )
+
+    app.get(f"/{resource}", tags=[resource], summary=f"Phase {phase}")(not_implemented)
 
 
 def create_app() -> FastAPI:
@@ -61,8 +57,8 @@ def create_app() -> FastAPI:
             version=VERSION,
         )
 
-    for module in ROUTERS:
-        app.include_router(module.router)
+    for resource, phase in PLANNED_ROUTES.items():
+        add_planned_route(app, resource, phase)
     return app
 
 

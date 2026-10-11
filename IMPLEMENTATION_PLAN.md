@@ -1,5 +1,7 @@
 # Offshore Oil and Gas Emissions Monitor: Implementation Plan for Claude Code
 
+**Last completed phase: Phase 1 (Repo, database and contracts)**
+
 Built from the project plan dated 8 October 2026 (14 features, 37.5 person-days). The plan is split into 11 phases. Each phase can be handed to Claude Code as a single session: paste the phase section, let it plan, then build until the "Done when" checks pass.
 
 ---
@@ -130,6 +132,15 @@ class Source(Protocol):
 # get_source("sentinel1") returns the fixture or live class based on DATA_MODE.
 ```
 
+Convention (no registry): each source is one module `pipeline/sources/<name>.py` that defines
+classes named `Fixture` and `Live` (and optionally `Replay`). `get_source(name)` imports the
+module and picks the class by `DATA_MODE`; replay mode uses `Fixture` until the module defines
+`Replay`. A source whose module does not exist yet raises `NotImplementedError` naming the phase
+that builds it (`SOURCE_PHASES` in `base.py`).
+
+**Layout note:** the tree above is the target. Each phase creates its own folders and modules
+when it fills them in; Phase 1 does not create empty placeholders.
+
 ---
 
 ## Phase 0: Access and risk checks (≈ 1.5 person-days)
@@ -158,16 +169,37 @@ class Source(Protocol):
 **Goal:** A runnable skeleton where every later phase just fills in modules.
 
 **Claude Code tasks**
-1. Create the repo layout above, `pyproject.toml` (ruff, mypy, pytest), `Makefile` (`make up`, `make check`, `make seed`, `make replay`), `.env.example`, `CLAUDE.md`.
-2. `docker-compose.yml` with `db` (postgis/postgis:16), `api` (FastAPI + uvicorn), `worker` (APScheduler process), `frontend` (Vite dev server). Volume-mount `data/`.
+1. Create the parts of the repo layout Phase 1 uses (`pipeline/`, `api/`, `scripts/`, `tests/`, `frontend/`, `data/`, `ml/weights/`), `pyproject.toml` (ruff, mypy, pytest), `Makefile` (`make up`, `make check`, `make seed`, `make replay` — the last prints a "phase 10" notice until then), `.env.example`, `CLAUDE.md`.
+2. `docker-compose.yml` with `db` (postgis/postgis:16), `api` (FastAPI + uvicorn, runs `alembic upgrade head` on start), `worker` (APScheduler process), `frontend` (stock `node` image running the Vite dev server; no separate Dockerfile). Volume-mount `data/`.
 3. SQLAlchemy + GeoAlchemy2 models for every table above; first Alembic migration; spatial indexes on all `geom` columns.
 4. `pipeline/schemas.py` Pydantic models mirroring the tables, plus GeoJSON Feature/FeatureCollection helpers.
-5. `pipeline/sources/base.py` with the `Source` protocol, `get_source()` factory and `DATA_MODE` switch; empty fixture/live stubs for each source.
-6. FastAPI app with `/health` and router stubs: `/basins`, `/platforms`, `/scenes`, `/slicks`, `/objects`, `/flares`, `/no2`, `/events`, `/drift`, `/suspects`, `/impacts`, `/alerts`, `/watchlists`, `/reports`, `/tiles`.
+5. `pipeline/sources/base.py` with the `Source` protocol, `get_source()` and the `DATA_MODE` switch, using the `Fixture`/`Live` naming convention above. No stub source modules: Phases 2 and 3 add each module when they build it.
+6. FastAPI app with `/health` and the planned routes `/basins`, `/platforms`, `/scenes`, `/slicks`, `/objects`, `/flares`, `/no2`, `/events`, `/drift`, `/suspects`, `/impacts`, `/alerts`, `/watchlists`, `/reports`, `/tiles`, declared in one `PLANNED_ROUTES` table in `api/main.py` that answers `501` with the phase number. Each phase replaces its entry with a real router in `api/routers/<resource>.py`.
 7. Vite + React + TS frontend with a full-screen MapLibre map (free basemap style), calling `/health`.
 8. GitHub Actions running `make check` against a PostGIS service container.
 
 **Done when:** `make up` starts all four services; `alembic upgrade head` runs clean; `make check` passes; the map loads in the browser.
+
+### Phase 1 simplification (changes from the first implementation)
+
+The first Phase 1 build was simplified without changing what it does. All checks still pass
+(ruff, mypy, pytest, eslint, tsc, vitest, frontend build; the migration renders the same
+16 tables and 22 indexes).
+
+| Area | Before | After |
+|---|---|---|
+| API route stubs | 15 router files + a stub-router helper (`api/routers/`) | One `PLANNED_ROUTES` table in `api/main.py`; same `501` responses naming the phase |
+| Data sources | 9 stub modules with 18 stub classes, a decorator registry and a TypeVar | `get_source()` finds `Fixture`/`Live` classes by convention; missing modules raise `NotImplementedError` naming the phase |
+| Placeholders | ~20 empty packages and docstring-only files for Phases 2–10 (`detect/`, `fuse/`, `drift/`, `impact/`, `temporal/`, `alerts/`, `reports/`, `registry/`, `ml/` packages, `jobs/replay.py`, `tests/e2e`, `tests/fixtures`) | Removed; each phase creates its own modules. Kept `data/` and `ml/weights/` (Docker mounts) |
+| `make replay` | Ran a stub module that exited with an error | Prints a "phase 10" notice |
+| Frontend container | Own `Dockerfile` + `.dockerignore` | Stock `node:24-alpine` image in Compose, whole `frontend/` mounted, `node_modules` kept in a container volume |
+| Frontend code | `api.ts`, `useHealth.ts`, `StatusBadge.tsx`, `vite-env.d.ts`, `test/setup.ts` | `health.ts` (types, fetch, hook) and `StatusBadge` inside `App.tsx`; jest-dom loaded straight from `vite.config.ts` |
+| Frontend dependencies | `eslint-plugin-react-refresh`, `globals` | Removed (typescript-eslint already handles browser globals) |
+| Type check | `tsc -b` (wrote and committed `tsconfig.tsbuildinfo`) | `tsc --noEmit`; build artifact removed |
+| Python dependencies | `uvicorn[standard]` | `uvicorn` (fewer native extras; `--reload` still works) |
+
+Unchanged: the database models and migration, Pydantic schemas, `/health`, Docker Compose services, the worker,
+`make seed`, CI, and the test gate (DB tests skip locally, required in CI).
 
 ---
 

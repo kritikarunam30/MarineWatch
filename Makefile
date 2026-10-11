@@ -24,7 +24,7 @@ seed:
 	$(PY) -m scripts.seed
 
 replay:
-	$(PY) -m pipeline.jobs.replay
+	@echo "make replay is implemented in phase 10"
 
 check: lint typecheck test frontend-check
 

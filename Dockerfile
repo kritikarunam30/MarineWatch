@@ -7,7 +7,6 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY pipeline ./pipeline
 COPY api ./api
-COPY ml ./ml
 RUN pip install --no-cache-dir -e .
 
 COPY alembic.ini ./
